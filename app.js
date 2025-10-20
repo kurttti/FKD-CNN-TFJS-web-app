@@ -3,16 +3,68 @@ const inputCanvas=document.getElementById('inputCanvas');
 const overlayCanvas=document.getElementById('overlayCanvas');
 const ctxIn=inputCanvas.getContext('2d'); const ctxOut=overlayCanvas.getContext('2d');
 const statusEl=document.getElementById('status');
+
+// Test if model files are accessible
+async function testModelAccess() {
+  try {
+    console.log('Testing model file access...');
+    const response = await fetch('model/model.json');
+    if (response.ok) {
+      console.log('Model file is accessible');
+      return true;
+    } else {
+      console.error('Model file not accessible:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error accessing model file:', error);
+    return false;
+  }
+}
 document.getElementById('loadModelBtn').addEventListener('click',async()=>{
   try {
-    statusEl.textContent='Loading model...';
+    statusEl.textContent='Testing model access...';
     console.log('Starting model load...');
-    model = await tf.loadLayersModel('model/model.json');
+    
+    // First test if model files are accessible
+    const isAccessible = await testModelAccess();
+    if (!isAccessible) {
+      statusEl.textContent='Model files not accessible. Check GitHub Pages deployment.';
+      return;
+    }
+    
+    statusEl.textContent='Loading model... (This may take 1-2 minutes for 20MB model)';
+    
+    // Add progress indicator
+    let progressCount = 0;
+    const progressInterval = setInterval(() => {
+      progressCount++;
+      statusEl.textContent=`Loading model... (${progressCount}s) - Large model, please wait...`;
+    }, 1000);
+    
+    // Add longer timeout for large model files (20MB total)
+    const loadPromise = tf.loadLayersModel('model/model.json');
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Model loading timeout after 2 minutes')), 120000)
+    );
+    
+    model = await Promise.race([loadPromise, timeoutPromise]);
+    clearInterval(progressInterval);
     console.log('Model loaded successfully');
     statusEl.textContent='Model loaded successfully!';
   } catch (error) {
+    clearInterval(progressInterval);
     console.error('Error loading model:', error);
     statusEl.textContent='Error loading model: ' + error.message;
+    
+    // Try to provide more specific error information
+    if (error.message.includes('404')) {
+      statusEl.textContent='Model file not found. Check if model.json exists.';
+    } else if (error.message.includes('CORS')) {
+      statusEl.textContent='CORS error. Try running from a local server.';
+    } else if (error.message.includes('timeout')) {
+      statusEl.textContent='Model loading timed out. File might be too large.';
+    }
   }
 });
 document.getElementById('imageInput').addEventListener('change',async(e)=>{
