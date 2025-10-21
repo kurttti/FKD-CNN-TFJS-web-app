@@ -1,5 +1,4 @@
 let model = null;
-let modelLoadPromise = null;
 
 const inputCanvas = document.getElementById("inputCanvas");
 const overlayCanvas = document.getElementById("overlayCanvas");
@@ -16,61 +15,38 @@ function resolveAssetUrl(assetPath) {
   const lastSlash = pathname.lastIndexOf("/");
   const lastSegment = pathname.slice(lastSlash + 1);
   const looksLikeFile = lastSegment.includes(".");
-  const basePath = looksLikeFile
-    ? pathname.slice(0, lastSlash + 1)
-    : `${pathname}/`;
+  const basePath = looksLikeFile ? pathname.slice(0, lastSlash + 1) : `${pathname}/`;
   return `${origin}${basePath}${assetPath}`;
 }
 
 const MODEL_URL = resolveAssetUrl("model/model.json?v=11");
-const WARM_UP_SHAPE = [1, 96, 96, 1];
 
-async function loadModel() {
-  if (model) {
-    return model;
-  }
+async function loadAndWarmModel() {
+  const loadedModel = await tf.loadLayersModel(MODEL_URL, {
+    requestInit: { cache: "no-cache" },
+  });
 
-  if (!modelLoadPromise) {
-    modelLoadPromise = (async () => {
-      const loadedModel = await tf.loadLayersModel(MODEL_URL, {
-        requestInit: { cache: "no-cache" },
-      });
-      warmUpModel(loadedModel);
-      model = loadedModel;
-      return loadedModel;
-    })();
-  }
+  tf.tidy(() => {
+    const warmupInput = tf.zeros([1, 96, 96, 1]);
+    const prediction = loadedModel.predict(warmupInput);
+    if (Array.isArray(prediction)) {
+      prediction.forEach((tensor) => tensor.dispose());
+    } else if (prediction) {
+      prediction.dispose();
+    }
+  });
 
-  try {
-    return await modelLoadPromise;
-  } catch (error) {
-    modelLoadPromise = null;
-    model = null;
-    throw error;
-  }
+  return loadedModel;
 }
 
-function warmUpModel(loadedModel) {
-  try {
-    tf.tidy(() => {
-      const zeros = tf.zeros(WARM_UP_SHAPE);
-      const result = loadedModel.predict(zeros);
-      if (Array.isArray(result)) {
-        result.forEach((tensor) => tensor.dispose());
-      } else if (result) {
-        result.dispose();
-      }
-    });
-  } catch (error) {
-    console.warn("Model warm-up failed", error);
-  }
-}
-
-// ✅ Автоматическая загрузка модели при открытии страницы
 window.addEventListener("load", async () => {
+  if (model) {
+    return;
+  }
+
   try {
     statusEl.textContent = "Loading model...";
-    await loadModel();
+    model = await loadAndWarmModel();
     statusEl.textContent = "Model loaded. Upload a face image.";
   } catch (err) {
     console.error(err);
@@ -78,15 +54,15 @@ window.addEventListener("load", async () => {
   }
 });
 
-// ✅ Альтернатива: кнопка "Load Model"
 document.getElementById("loadModelBtn").addEventListener("click", async () => {
   if (model) {
     statusEl.textContent = "Model already loaded.";
     return;
   }
+
   try {
     statusEl.textContent = "Loading model manually...";
-    await loadModel();
+    model = await loadAndWarmModel();
     statusEl.textContent = "Model loaded successfully!";
   } catch (e) {
     console.error(e);
@@ -94,14 +70,15 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
   }
 });
 
-// ✅ При загрузке изображения — делаем предсказание
 document.getElementById("imageInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
+
   if (!model) {
     statusEl.textContent = "Model not loaded yet.";
     return;
   }
+
   await drawAndPredict(file);
 });
 
