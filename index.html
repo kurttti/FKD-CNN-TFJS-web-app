@@ -1,18 +1,33 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Facial Keypoints — CNN Demo</title>
-<link rel="stylesheet" href="style.css"/>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
-</head><body>
-<header><h1>Facial Keypoints — CNN (TF.js)</h1>
-<p>Upload a face image (ideally 96×96). Inference runs in your browser.</p></header>
-<section class="controls"><button id="loadModelBtn">Load Model</button>
-<input type="file" id="imageInput" accept="image/*"/></section>
-<section class="canvas-row">
-<div><h3>Input</h3><canvas id="inputCanvas" width="96" height="96"></canvas></div>
-<div><h3>Prediction</h3><canvas id="overlayCanvas" width="96" height="96"></canvas></div>
-</section>
-<section class="metrics"><p id="status">Status: idle</p></section>
-<footer><p>Single CNN regressor → 30 coords. Trained with masked MSE.</p></footer>
-<script src="app.js"></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Facial Keypoints — CNN (TF.js)</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0"></script>
+</head>
+<body>
+  <h1>Facial Keypoints — CNN (TF.js)</h1>
+  <p>Upload a face image (ideally 96×96). Inference runs in your browser.</p>
+
+  <div class="controls">
+    <button id="loadModelBtn">Load Model</button>
+    <input type="file" id="imageInput" accept="image/*" />
+  </div>
+
+  <div class="canvas-wrapper">
+    <div>
+      <h3>Input</h3>
+      <canvas id="inputCanvas" width="96" height="96"></canvas>
+    </div>
+    <div>
+      <h3>Prediction</h3>
+      <canvas id="overlayCanvas" width="96" height="96"></canvas>
+    </div>
+  </div>
+
+  <p id="status">Idle.</p>
+  <script src="app.js"></script>
+</body>
+</html>
