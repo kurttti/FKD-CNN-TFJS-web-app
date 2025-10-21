@@ -12,13 +12,16 @@ function resolveAssetUrl(assetPath) {
   if (pathname.endsWith("/")) {
     return `${origin}${pathname}${assetPath}`;
   }
-
   const lastSlash = pathname.lastIndexOf("/");
   const lastSegment = pathname.slice(lastSlash + 1);
   const looksLikeFile = lastSegment.includes(".");
-  const basePath = looksLikeFile ? pathname.slice(0, lastSlash + 1) : `${pathname}/`;
+  const basePath = looksLikeFile
+    ? pathname.slice(0, lastSlash + 1)
+    : `${pathname}/`;
   return `${origin}${basePath}${assetPath}`;
 }
+
+const MODEL_URL = resolveAssetUrl("model/model.json?v=7");
 
 const MODEL_URL = resolveAssetUrl("model/model.json?v=11");
 
@@ -65,7 +68,7 @@ window.addEventListener("load", async () => {
     statusEl.textContent = "Model loaded. Upload a face image.";
   } catch (err) {
     console.error(err);
-    statusEl.textContent = "Model loading failed. Check console.";
+    statusEl.textContent = `Model loading failed: ${err.message}`;
   }
 });
 
@@ -81,7 +84,7 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
     statusEl.textContent = "Model loaded successfully!";
   } catch (e) {
     console.error(e);
-    statusEl.textContent = "Error loading model.";
+    statusEl.textContent = `Error loading model: ${e.message}`;
   }
 });
 
