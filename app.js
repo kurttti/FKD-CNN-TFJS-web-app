@@ -1,4 +1,5 @@
 let model = null;
+let modelPromise = null;
 
 const inputCanvas = document.getElementById("inputCanvas");
 const overlayCanvas = document.getElementById("overlayCanvas");
@@ -21,22 +22,36 @@ function resolveAssetUrl(assetPath) {
 
 const MODEL_URL = resolveAssetUrl("model/model.json?v=11");
 
-async function loadAndWarmModel() {
-  const loadedModel = await tf.loadLayersModel(MODEL_URL, {
-    requestInit: { cache: "no-cache" },
-  });
+async function fetchModel() {
+  if (model) {
+    return model;
+  }
 
-  tf.tidy(() => {
-    const warmupInput = tf.zeros([1, 96, 96, 1]);
-    const prediction = loadedModel.predict(warmupInput);
-    if (Array.isArray(prediction)) {
-      prediction.forEach((tensor) => tensor.dispose());
-    } else if (prediction) {
-      prediction.dispose();
-    }
-  });
+  if (!modelPromise) {
+    modelPromise = (async () => {
+      const loadedModel = await tf.loadLayersModel(MODEL_URL, {
+        requestInit: { cache: "no-cache" },
+      });
 
-  return loadedModel;
+      tf.tidy(() => {
+        const warmupInput = tf.zeros([1, 96, 96, 1]);
+        const prediction = loadedModel.predict(warmupInput);
+        if (Array.isArray(prediction)) {
+          prediction.forEach((tensor) => tensor.dispose());
+        } else if (prediction) {
+          prediction.dispose();
+        }
+      });
+
+      model = loadedModel;
+      return model;
+    })().catch((error) => {
+      modelPromise = null;
+      throw error;
+    });
+  }
+
+  return modelPromise;
 }
 
 window.addEventListener("load", async () => {
@@ -46,7 +61,7 @@ window.addEventListener("load", async () => {
 
   try {
     statusEl.textContent = "Loading model...";
-    model = await loadAndWarmModel();
+    await fetchModel();
     statusEl.textContent = "Model loaded. Upload a face image.";
   } catch (err) {
     console.error(err);
@@ -62,7 +77,7 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
 
   try {
     statusEl.textContent = "Loading model manually...";
-    model = await loadAndWarmModel();
+    await fetchModel();
     statusEl.textContent = "Model loaded successfully!";
   } catch (e) {
     console.error(e);
@@ -74,12 +89,17 @@ document.getElementById("imageInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  if (!model) {
-    statusEl.textContent = "Model not loaded yet.";
-    return;
-  }
+  try {
+    if (!model) {
+      statusEl.textContent = "Loading model...";
+      await fetchModel();
+    }
 
-  await drawAndPredict(file);
+    await drawAndPredict(file);
+  } catch (error) {
+    console.error(error);
+    statusEl.textContent = "Model loading failed. Check console.";
+  }
 });
 
 async function drawAndPredict(file) {
