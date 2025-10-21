@@ -11,6 +11,7 @@ function resolveAssetUrl(assetPath) {
   if (pathname.endsWith("/")) {
     return `${origin}${pathname}${assetPath}`;
   }
+
   const lastSlash = pathname.lastIndexOf("/");
   const lastSegment = pathname.slice(lastSlash + 1);
   const looksLikeFile = lastSegment.includes(".");
@@ -20,14 +21,9 @@ function resolveAssetUrl(assetPath) {
   return `${origin}${basePath}${assetPath}`;
 }
 
-const MODEL_URL = resolveAssetUrl("model/model.json?v=9");
+const MODEL_URL = resolveAssetUrl("model/model.json?v=10");
 
-const FALLBACK_BATCH_SHAPE = [
-  null,
-  inputCanvas.height || 96,
-  inputCanvas.width || 96,
-  1,
-];
+const WARM_UP_SHAPE = [1, 96, 96, 1];
 
 async function ensureModelLoaded() {
   if (model) {
@@ -36,7 +32,9 @@ async function ensureModelLoaded() {
 
   if (!modelLoadPromise) {
     modelLoadPromise = (async () => {
-      const loadedModel = await loadModelWithPatchedInput();
+      const loadedModel = await tf.loadLayersModel(MODEL_URL, {
+        requestInit: { cache: "no-cache" },
+      });
       warmUpModel(loadedModel);
       return loadedModel;
     })();
@@ -52,95 +50,10 @@ async function ensureModelLoaded() {
   }
 }
 
-async function loadModelWithPatchedInput() {
-  const handler = tf.io.browserHTTPRequest(MODEL_URL, {
-    requestInit: { cache: "no-cache" },
-  });
-  const artifacts = await handler.load();
-  ensureInputLayerBatchShape(artifacts);
-  const memoryHandler = tf.io.fromMemory(artifacts);
-  return tf.loadLayersModel(memoryHandler);
-}
-
-function ensureInputLayerBatchShape(artifacts) {
-  const topology = artifacts?.modelTopology;
-  if (!topology) {
-    return;
-  }
-
-  const modelConfig = topology.model_config || topology.config;
-  const config = modelConfig?.config || {};
-  const layers = Array.isArray(config.layers) ? config.layers : [];
-
-  layers
-    .filter((layer) => layer?.class_name === "InputLayer")
-    .forEach((layer) => {
-      const layerConfig = layer.config || (layer.config = {});
-      const resolvedShape = inferBatchShape(layerConfig, layers);
-      layerConfig.batch_input_shape = resolvedShape;
-      layerConfig.batch_shape = resolvedShape;
-      layerConfig.batchInputShape = resolvedShape;
-      layerConfig.batchShape = resolvedShape;
-    });
-}
-
-function inferBatchShape(layerConfig, layers) {
-  const existingShape =
-    layerConfig.batch_input_shape ||
-    layerConfig.batch_shape ||
-    layerConfig.batchInputShape ||
-    layerConfig.batchShape;
-
-  if (Array.isArray(existingShape) && existingShape.length > 0) {
-    return normalizeBatchShape(existingShape);
-  }
-
-  const inboundShape = extractInboundShape(layers);
-  if (inboundShape) {
-    return normalizeBatchShape(inboundShape);
-  }
-
-  return [...FALLBACK_BATCH_SHAPE];
-}
-
-function extractInboundShape(layers) {
-  for (const layer of layers) {
-    const inboundNodes = layer?.inbound_nodes;
-    if (!Array.isArray(inboundNodes)) continue;
-    for (const node of inboundNodes) {
-      const args = Array.isArray(node?.args) ? node.args : [];
-      for (const arg of args) {
-        const shape = arg?.config?.shape;
-        if (Array.isArray(shape) && shape.length > 0) {
-          return [...shape];
-        }
-      }
-    }
-  }
-  return null;
-}
-
-function normalizeBatchShape(shape) {
-  return shape.map((dim, index) => {
-    if (index === 0) {
-      return null;
-    }
-    if (dim === undefined || dim === -1) {
-      return FALLBACK_BATCH_SHAPE[index] ?? null;
-    }
-    return dim;
-  });
-}
-
 function warmUpModel(loadedModel) {
   try {
     tf.tidy(() => {
-      const zeros = tf.zeros([
-        1,
-        FALLBACK_BATCH_SHAPE[1],
-        FALLBACK_BATCH_SHAPE[2],
-        FALLBACK_BATCH_SHAPE[3],
-      ]);
+      const zeros = tf.zeros(WARM_UP_SHAPE);
       const result = loadedModel.predict(zeros);
       if (Array.isArray(result)) {
         result.forEach((tensor) => tensor.dispose());
@@ -152,7 +65,6 @@ function warmUpModel(loadedModel) {
     console.warn("Model warm-up failed", error);
   }
 }
-
 
 // ✅ Автоматическая загрузка модели при открытии страницы
 window.addEventListener("load", async () => {
