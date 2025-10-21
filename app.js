@@ -1,4 +1,5 @@
 let model = null;
+let modelLoadPromise = null;
 const inputCanvas = document.getElementById("inputCanvas");
 const overlayCanvas = document.getElementById("overlayCanvas");
 const ctxIn = inputCanvas.getContext("2d");
@@ -19,15 +20,145 @@ function resolveAssetUrl(assetPath) {
   return `${origin}${basePath}${assetPath}`;
 }
 
-const MODEL_URL = resolveAssetUrl("model/model.json?v=8");
+const MODEL_URL = resolveAssetUrl("model/model.json?v=9");
+
+const FALLBACK_BATCH_SHAPE = [
+  null,
+  inputCanvas.height || 96,
+  inputCanvas.width || 96,
+  1,
+];
+
+async function ensureModelLoaded() {
+  if (model) {
+    return model;
+  }
+
+  if (!modelLoadPromise) {
+    modelLoadPromise = (async () => {
+      const loadedModel = await loadModelWithPatchedInput();
+      warmUpModel(loadedModel);
+      return loadedModel;
+    })();
+  }
+
+  try {
+    model = await modelLoadPromise;
+    return model;
+  } catch (error) {
+    modelLoadPromise = null;
+    model = null;
+    throw error;
+  }
+}
+
+async function loadModelWithPatchedInput() {
+  const handler = tf.io.browserHTTPRequest(MODEL_URL, {
+    requestInit: { cache: "no-cache" },
+  });
+  const artifacts = await handler.load();
+  ensureInputLayerBatchShape(artifacts);
+  const memoryHandler = tf.io.fromMemory(artifacts);
+  return tf.loadLayersModel(memoryHandler);
+}
+
+function ensureInputLayerBatchShape(artifacts) {
+  const topology = artifacts?.modelTopology;
+  if (!topology) {
+    return;
+  }
+
+  const modelConfig = topology.model_config || topology.config;
+  const config = modelConfig?.config || {};
+  const layers = Array.isArray(config.layers) ? config.layers : [];
+
+  layers
+    .filter((layer) => layer?.class_name === "InputLayer")
+    .forEach((layer) => {
+      const layerConfig = layer.config || (layer.config = {});
+      const resolvedShape = inferBatchShape(layerConfig, layers);
+      layerConfig.batch_input_shape = resolvedShape;
+      layerConfig.batch_shape = resolvedShape;
+      layerConfig.batchInputShape = resolvedShape;
+      layerConfig.batchShape = resolvedShape;
+    });
+}
+
+function inferBatchShape(layerConfig, layers) {
+  const existingShape =
+    layerConfig.batch_input_shape ||
+    layerConfig.batch_shape ||
+    layerConfig.batchInputShape ||
+    layerConfig.batchShape;
+
+  if (Array.isArray(existingShape) && existingShape.length > 0) {
+    return normalizeBatchShape(existingShape);
+  }
+
+  const inboundShape = extractInboundShape(layers);
+  if (inboundShape) {
+    return normalizeBatchShape(inboundShape);
+  }
+
+  return [...FALLBACK_BATCH_SHAPE];
+}
+
+function extractInboundShape(layers) {
+  for (const layer of layers) {
+    const inboundNodes = layer?.inbound_nodes;
+    if (!Array.isArray(inboundNodes)) continue;
+    for (const node of inboundNodes) {
+      const args = Array.isArray(node?.args) ? node.args : [];
+      for (const arg of args) {
+        const shape = arg?.config?.shape;
+        if (Array.isArray(shape) && shape.length > 0) {
+          return [...shape];
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function normalizeBatchShape(shape) {
+  return shape.map((dim, index) => {
+    if (index === 0) {
+      return null;
+    }
+    if (dim === undefined || dim === -1) {
+      return FALLBACK_BATCH_SHAPE[index] ?? null;
+    }
+    return dim;
+  });
+}
+
+function warmUpModel(loadedModel) {
+  try {
+    tf.tidy(() => {
+      const zeros = tf.zeros([
+        1,
+        FALLBACK_BATCH_SHAPE[1],
+        FALLBACK_BATCH_SHAPE[2],
+        FALLBACK_BATCH_SHAPE[3],
+      ]);
+      const result = loadedModel.predict(zeros);
+      if (Array.isArray(result)) {
+        result.forEach((tensor) => tensor.dispose());
+      } else if (result) {
+        result.dispose();
+      }
+    });
+  } catch (error) {
+    console.warn("Model warm-up failed", error);
+  }
+}
 
 
 // ✅ Автоматическая загрузка модели при открытии страницы
 window.addEventListener("load", async () => {
   try {
     statusEl.textContent = "Loading model...";
-    model = await tf.loadLayersModel(MODEL_URL);
-    model.predict(tf.zeros([1, 96, 96, 1])).dispose();
+    await ensureModelLoaded();
     statusEl.textContent = "Model loaded. Upload a face image.";
   } catch (err) {
     console.error(err);
@@ -43,8 +174,7 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
   }
   try {
     statusEl.textContent = "Loading model manually...";
-    model = await tf.loadLayersModel(MODEL_URL);
-    model.predict(tf.zeros([1, 96, 96, 1])).dispose();
+    await ensureModelLoaded();
     statusEl.textContent = "Model loaded successfully!";
   } catch (e) {
     console.error(e);
@@ -56,15 +186,15 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
 document.getElementById("imageInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  if (!model) {
-    statusEl.textContent = "Model not loaded yet.";
-    return;
-  }
   await drawAndPredict(file);
 });
 
 async function drawAndPredict(file) {
   try {
+    statusEl.textContent = model
+      ? "Processing image..."
+      : "Waiting for model to load...";
+    const activeModel = await ensureModelLoaded();
     statusEl.textContent = "Processing image...";
     const img = await fileToImage(file);
     ctxIn.clearRect(0, 0, 96, 96);
@@ -79,7 +209,7 @@ async function drawAndPredict(file) {
     }
 
     const t = tf.tensor(gray, [1, 96, 96, 1]);
-    const y = model.predict(t);
+    const y = activeModel.predict(t);
     const coords = (await y.array())[0];
     y.dispose();
     t.dispose();
@@ -92,7 +222,7 @@ async function drawAndPredict(file) {
     statusEl.textContent = "Prediction complete!";
   } catch (error) {
     console.error("Prediction error:", error);
-    statusEl.textContent = "Error during prediction.";
+    statusEl.textContent = `Error during prediction: ${error.message}`;
   }
 }
 
@@ -107,9 +237,16 @@ function drawCross(ctx, x, y) {
 }
 
 function fileToImage(file) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      reject(new Error("Unable to load the selected image."));
+    };
     img.src = URL.createObjectURL(file);
   });
 }
