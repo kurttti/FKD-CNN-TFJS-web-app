@@ -80,6 +80,32 @@
         });
     }
 
+    }
+    if (!modelPromise) {
+      const modelUrl = resolveAssetUrl("model/model.json?v=15");
+      modelPromise = (async () => {
+        const loadedModel = await tf.loadLayersModel(modelUrl, {
+          requestInit: { cache: "no-cache" },
+        });
+
+    if (!modelPromise) {
+      // Bump the version number to bust caches when updating the model file.
+      var modelUrl = resolveAssetUrl("model/model.json?v=17");
+      modelPromise = tf
+        .loadLayersModel(modelUrl, {
+          requestInit: { cache: "no-cache" },
+        })
+        .then(function (loadedModel) {
+          warmModel(loadedModel);
+          model = loadedModel;
+          return model;
+        })
+        .catch(function (error) {
+          modelPromise = null;
+          throw error;
+        });
+    }
+
     return modelPromise;
   }
 
@@ -148,6 +174,88 @@
       } else {
         handlePrediction();
       }
+    });
+  }
+
+  // -- Webcam integration --
+  // Add support for capturing images from the user's webcam. When the
+  // "Use Camera" button is clicked we request access to the webcam and
+  // stream it into a hidden <video> element. A "Capture Photo" button
+  // grabs the current frame from the video, draws it to the input canvas,
+  // converts it to a Blob, and then reuses the existing drawAndPredict
+  // logic to run inference.
+  var startCameraBtn = document.getElementById("startCameraBtn");
+  var captureBtn = document.getElementById("captureBtn");
+  var webcamVideo = document.getElementById("webcamVideo");
+  var cameraContainer = document.getElementById("cameraContainer");
+  var webcamStream = null;
+
+  if (startCameraBtn && captureBtn && webcamVideo && cameraContainer) {
+    startCameraBtn.addEventListener("click", async function () {
+      // If a stream is already active, do nothing.
+      if (webcamStream) {
+        cameraContainer.style.display = "block";
+        captureBtn.disabled = false;
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        updateStatus("Webcam not supported in this browser.");
+        return;
+      }
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        webcamVideo.srcObject = webcamStream;
+        cameraContainer.style.display = "block";
+        captureBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        updateStatus("Unable to access the camera.");
+      }
+    });
+
+    captureBtn.addEventListener("click", function () {
+      if (!webcamStream) {
+        updateStatus("Camera not started.");
+        return;
+      }
+      // Draw current video frame into the input canvas
+      try {
+        ctxIn.clearRect(0, 0, 96, 96);
+        ctxIn.drawImage(webcamVideo, 0, 0, 96, 96);
+      } catch (err) {
+        console.error(err);
+        updateStatus("Error capturing image from camera.");
+        return;
+      }
+      // Convert the canvas to a Blob (PNG) and predict
+      inputCanvas.toBlob(function (blob) {
+        if (!blob) {
+          updateStatus("Could not capture image.");
+          return;
+        }
+        var file = new File([blob], "capture.png", { type: "image/png" });
+
+        function runPrediction() {
+          drawAndPredict(file).catch(function (error) {
+            console.error("Prediction error:", error);
+            updateStatus("Error during prediction.");
+          });
+        }
+
+        if (!model) {
+          updateStatus("Loading model...");
+          fetchModel()
+            .then(function () {
+              runPrediction();
+            })
+            .catch(function (error) {
+              console.error(error);
+              updateStatus("Model loading failed. Check console.");
+            });
+        } else {
+          runPrediction();
+        }
+      }, "image/png");
     });
   }
 

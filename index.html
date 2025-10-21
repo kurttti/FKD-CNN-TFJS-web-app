@@ -13,7 +13,16 @@
 
   <div class="controls">
     <button id="loadModelBtn">Load Model</button>
+    <!-- File picker for users who prefer to upload an existing image -->
     <input type="file" id="imageInput" accept="image/*" />
+    <!-- Controls for using the webcam -->
+    <button id="startCameraBtn">Use Camera</button>
+    <button id="captureBtn" disabled>Capture Photo</button>
+  </div>
+
+  <!-- Live preview of the webcam stream. Hidden until the camera is activated. -->
+  <div id="cameraContainer" style="display: none; margin-top: 20px;">
+    <video id="webcamVideo" width="96" height="96" autoplay muted></video>
   </div>
 
   <div class="canvas-wrapper">
