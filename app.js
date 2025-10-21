@@ -1,5 +1,6 @@
 let model = null;
 let modelLoadPromise = null;
+
 const inputCanvas = document.getElementById("inputCanvas");
 const overlayCanvas = document.getElementById("overlayCanvas");
 const ctxIn = inputCanvas.getContext("2d");
@@ -22,7 +23,6 @@ function resolveAssetUrl(assetPath) {
 }
 
 const MODEL_URL = resolveAssetUrl("model/model.json?v=10");
-
 const WARM_UP_SHAPE = [1, 96, 96, 1];
 
 async function ensureModelLoaded() {
@@ -74,7 +74,7 @@ window.addEventListener("load", async () => {
     statusEl.textContent = "Model loaded. Upload a face image.";
   } catch (err) {
     console.error(err);
-    statusEl.textContent = `Model loading failed: ${err.message}`;
+    statusEl.textContent = "Model loading failed. Check console.";
   }
 });
 
@@ -90,7 +90,7 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
     statusEl.textContent = "Model loaded successfully!";
   } catch (e) {
     console.error(e);
-    statusEl.textContent = `Error loading model: ${e.message}`;
+    statusEl.textContent = "Error loading model.";
   }
 });
 
@@ -103,11 +103,15 @@ document.getElementById("imageInput").addEventListener("change", async (e) => {
 
 async function drawAndPredict(file) {
   try {
-    statusEl.textContent = model
-      ? "Processing image..."
-      : "Waiting for model to load...";
+    if (!model) {
+      statusEl.textContent = "Loading model...";
+    } else {
+      statusEl.textContent = "Processing image...";
+    }
+
     const activeModel = await ensureModelLoaded();
     statusEl.textContent = "Processing image...";
+
     const img = await fileToImage(file);
     ctxIn.clearRect(0, 0, 96, 96);
     ctxIn.drawImage(img, 0, 0, 96, 96);
@@ -129,12 +133,14 @@ async function drawAndPredict(file) {
     ctxOut.clearRect(0, 0, 96, 96);
     ctxOut.drawImage(inputCanvas, 0, 0);
     ctxOut.strokeStyle = "#38bdf8";
-    for (let k = 0; k < 30; k += 2) drawCross(ctxOut, coords[k], coords[k + 1]);
+    for (let k = 0; k < 30; k += 2) {
+      drawCross(ctxOut, coords[k], coords[k + 1]);
+    }
 
     statusEl.textContent = "Prediction complete!";
   } catch (error) {
     console.error("Prediction error:", error);
-    statusEl.textContent = `Error during prediction: ${error.message}`;
+    statusEl.textContent = "Error during prediction.";
   }
 }
 
