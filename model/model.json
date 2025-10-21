@@ -86,28 +86,14 @@
             },
             "name": "conv2d",
             "inbound_nodes": [
-              {
-                "args": [
-                  {
-                    "class_name": "__keras_tensor__",
-                    "config": {
-                      "shape": [
-                        null,
-                        96,
-                        96,
-                        1
-                      ],
-                      "dtype": "float32",
-                      "keras_history": [
-                        "input_image",
-                        0,
-                        0
-                      ]
-                    }
-                  }
-                ],
-                "kwargs": {}
-              }
+              [
+                [
+                  "input_image",
+                  0,
+                  0,
+                  {}
+                ]
+              ]
             ]
           },
           {
@@ -156,28 +142,14 @@
             },
             "name": "conv2d_1",
             "inbound_nodes": [
-              {
-                "args": [
-                  {
-                    "class_name": "__keras_tensor__",
-                    "config": {
-                      "shape": [
-                        null,
-                        96,
-                        96,
-                        32
-                      ],
-                      "dtype": "float32",
-                      "keras_history": [
-                        "conv2d",
-                        0,
-                        0
-                      ]
-                    }
-                  }
-                ],
-                "kwargs": {}
-              }
+              [
+                [
+                  "conv2d",
+                  0,
+                  0,
+                  {}
+                ]
+              ]
             ]
           },
           {
@@ -199,28 +171,14 @@
             },
             "name": "max_pooling2d",
             "inbound_nodes": [
-              {
-                "args": [
-                  {
-                    "class_name": "__keras_tensor__",
-                    "config": {
-                      "shape": [
-                        null,
-                        96,
-                        96,
-                        32
-                      ],
-                      "dtype": "float32",
-                      "keras_history": [
-                        "conv2d_1",
-                        0,
-                        0
-                      ]
-                    }
-                  }
-                ],
-                "kwargs": {}
-              }
+              [
+                [
+                  "conv2d_1",
+                  0,
+                  0,
+                  {}
+                ]
+              ]
             ]
           },
           {
@@ -269,28 +227,14 @@
             },
             "name": "conv2d_2",
             "inbound_nodes": [
-              {
-                "args": [
-                  {
-                    "class_name": "__keras_tensor__",
-                    "config": {
-                      "shape": [
-                        null,
-                        48,
-                        48,
-                        32
-                      ],
-                      "dtype": "float32",
-                      "keras_history": [
-                        "max_pooling2d",
-                        0,
-                        0
-                      ]
-                    }
-                  }
-                ],
-                "kwargs": {}
-              }
+              [
+                [
+                  "max_pooling2d",
+                  0,
+                  0,
+                  {}
+                ]
+              ]
             ]
           },
           {
@@ -312,28 +256,14 @@
             },
             "name": "max_pooling2d_1",
             "inbound_nodes": [
-              {
-                "args": [
-                  {
-                    "class_name": "__keras_tensor__",
-                    "config": {
-                      "shape": [
-                        null,
-                        48,
-                        48,
-                        64
-                      ],
-                      "dtype": "float32",
-                      "keras_history": [
-                        "conv2d_2",
-                        0,
-                        0
-                      ]
-                    }
-                  }
-                ],
-                "kwargs": {}
-              }
+              [
+                [
+                  "conv2d_2",
+                  0,
+                  0,
+                  {}
+                ]
+              ]
             ]
           },
           {
@@ -346,28 +276,14 @@
             },
             "name": "flatten",
             "inbound_nodes": [
-              {
-                "args": [
-                  {
-                    "class_name": "__keras_tensor__",
-                    "config": {
-                      "shape": [
-                        null,
-                        24,
-                        24,
-                        64
-                      ],
-                      "dtype": "float32",
-                      "keras_history": [
-                        "max_pooling2d_1",
-                        0,
-                        0
-                      ]
-                    }
-                  }
-                ],
-                "kwargs": {}
-              }
+              [
+                [
+                  "max_pooling2d_1",
+                  0,
+                  0,
+                  {}
+                ]
+              ]
             ]
           },
           {
@@ -400,26 +316,14 @@
             },
             "name": "dense",
             "inbound_nodes": [
-              {
-                "args": [
-                  {
-                    "class_name": "__keras_tensor__",
-                    "config": {
-                      "shape": [
-                        null,
-                        36864
-                      ],
-                      "dtype": "float32",
-                      "keras_history": [
-                        "flatten",
-                        0,
-                        0
-                      ]
-                    }
-                  }
-                ],
-                "kwargs": {}
-              }
+              [
+                [
+                  "flatten",
+                  0,
+                  0,
+                  {}
+                ]
+              ]
             ]
           },
           {
@@ -452,26 +356,14 @@
             },
             "name": "output_keypoints",
             "inbound_nodes": [
-              {
-                "args": [
-                  {
-                    "class_name": "__keras_tensor__",
-                    "config": {
-                      "shape": [
-                        null,
-                        128
-                      ],
-                      "dtype": "float32",
-                      "keras_history": [
-                        "dense",
-                        0,
-                        0
-                      ]
-                    }
-                  }
-                ],
-                "kwargs": {}
-              }
+              [
+                [
+                  "dense",
+                  0,
+                  0,
+                  {}
+                ]
+              ]
             ]
           }
         ],
