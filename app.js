@@ -62,6 +62,12 @@
     if (model) {
       return Promise.resolve(model);
     }
+    if (!modelPromise) {
+      const modelUrl = resolveAssetUrl("model/model.json?v=15");
+      modelPromise = (async () => {
+        const loadedModel = await tf.loadLayersModel(modelUrl, {
+          requestInit: { cache: "no-cache" },
+        });
 
     if (!modelPromise) {
       var modelUrl = resolveAssetUrl("model/model.json?v=16");
