@@ -1,4 +1,6 @@
 let model = null;
+let modelPromise = null;
+
 const inputCanvas = document.getElementById("inputCanvas");
 const overlayCanvas = document.getElementById("overlayCanvas");
 const ctxIn = inputCanvas.getContext("2d");
@@ -21,13 +23,48 @@ function resolveAssetUrl(assetPath) {
 
 const MODEL_URL = resolveAssetUrl("model/model.json?v=7");
 
+const MODEL_URL = resolveAssetUrl("model/model.json?v=11");
 
-// ✅ Автоматическая загрузка модели при открытии страницы
+async function fetchModel() {
+  if (model) {
+    return model;
+  }
+
+  if (!modelPromise) {
+    modelPromise = (async () => {
+      const loadedModel = await tf.loadLayersModel(MODEL_URL, {
+        requestInit: { cache: "no-cache" },
+      });
+
+      tf.tidy(() => {
+        const warmupInput = tf.zeros([1, 96, 96, 1]);
+        const prediction = loadedModel.predict(warmupInput);
+        if (Array.isArray(prediction)) {
+          prediction.forEach((tensor) => tensor.dispose());
+        } else if (prediction) {
+          prediction.dispose();
+        }
+      });
+
+      model = loadedModel;
+      return model;
+    })().catch((error) => {
+      modelPromise = null;
+      throw error;
+    });
+  }
+
+  return modelPromise;
+}
+
 window.addEventListener("load", async () => {
+  if (model) {
+    return;
+  }
+
   try {
     statusEl.textContent = "Loading model...";
-    model = await tf.loadLayersModel(MODEL_URL);
-    model.predict(tf.zeros([1, 96, 96, 1])).dispose();
+    await fetchModel();
     statusEl.textContent = "Model loaded. Upload a face image.";
   } catch (err) {
     console.error(err);
@@ -35,16 +72,15 @@ window.addEventListener("load", async () => {
   }
 });
 
-// ✅ Альтернатива: кнопка "Load Model"
 document.getElementById("loadModelBtn").addEventListener("click", async () => {
   if (model) {
     statusEl.textContent = "Model already loaded.";
     return;
   }
+
   try {
     statusEl.textContent = "Loading model manually...";
-    model = await tf.loadLayersModel(MODEL_URL);
-    model.predict(tf.zeros([1, 96, 96, 1])).dispose();
+    await fetchModel();
     statusEl.textContent = "Model loaded successfully!";
   } catch (e) {
     console.error(e);
@@ -52,20 +88,27 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
   }
 });
 
-// ✅ При загрузке изображения — делаем предсказание
 document.getElementById("imageInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  if (!model) {
-    statusEl.textContent = "Model not loaded yet.";
-    return;
+
+  try {
+    if (!model) {
+      statusEl.textContent = "Loading model...";
+      await fetchModel();
+    }
+
+    await drawAndPredict(file);
+  } catch (error) {
+    console.error(error);
+    statusEl.textContent = "Model loading failed. Check console.";
   }
-  await drawAndPredict(file);
 });
 
 async function drawAndPredict(file) {
   try {
     statusEl.textContent = "Processing image...";
+
     const img = await fileToImage(file);
     ctxIn.clearRect(0, 0, 96, 96);
     ctxIn.drawImage(img, 0, 0, 96, 96);
@@ -107,9 +150,16 @@ function drawCross(ctx, x, y) {
 }
 
 function fileToImage(file) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      reject(new Error("Unable to load the selected image."));
+    };
     img.src = URL.createObjectURL(file);
   });
 }
