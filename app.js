@@ -70,7 +70,6 @@ window.addEventListener("load", async () => {
     console.error(err);
     statusEl.textContent = `Model loading failed: ${err.message}`;
   }
-});
 
 document.getElementById("loadModelBtn").addEventListener("click", async () => {
   if (model) {
@@ -121,21 +120,19 @@ async function drawAndPredict(file) {
         255.0;
     }
 
-    const t = tf.tensor(gray, [1, 96, 96, 1]);
-    const y = model.predict(t);
-    const coords = (await y.array())[0];
-    y.dispose();
-    t.dispose();
-
-    ctxOut.clearRect(0, 0, 96, 96);
-    ctxOut.drawImage(inputCanvas, 0, 0);
-    ctxOut.strokeStyle = "#38bdf8";
-    for (let k = 0; k < 30; k += 2) drawCross(ctxOut, coords[k], coords[k + 1]);
-
-    statusEl.textContent = "Prediction complete!";
-  } catch (error) {
-    console.error("Prediction error:", error);
-    statusEl.textContent = "Error during prediction.";
+  function fileToImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(img.src);
+        resolve(img);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        reject(new Error("Unable to load the selected image."));
+      };
+      img.src = URL.createObjectURL(file);
+    });
   }
 }
 
