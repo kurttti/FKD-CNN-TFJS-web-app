@@ -21,8 +21,6 @@ function resolveAssetUrl(assetPath) {
   return `${origin}${basePath}${assetPath}`;
 }
 
-const MODEL_URL = resolveAssetUrl("model/model.json?v=7");
-
 const MODEL_URL = resolveAssetUrl("model/model.json?v=11");
 
 async function fetchModel() {
