@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Facial Keypoints — CNN (TF.js)</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0"></script>
+  <!-- Chart.js for rendering training/validation loss and keypoint error plots -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <h1>Facial Keypoints — CNN (TF.js)</h1>
+  <p>Upload a face image (ideally 96×96). Inference runs in your browser.</p>
+
+  <div class="controls">
+    <button id="loadModelBtn">Load Model</button>
+    <!-- File picker for uploading an existing image -->
+    <input type="file" id="imageInput" accept="image/*" />
+    <!-- Controls for using the webcam -->
+    <button id="startCameraBtn">Use Camera</button>
+    <button id="captureBtn" disabled>Capture Photo</button>
+    <!-- Button to stop and hide the webcam feed. Hidden until the camera is started. -->
+    <button id="stopCameraBtn" style="display: none;">Stop Camera</button>
+  </div>
+
+  <!-- Live preview of the webcam stream. Hidden until the camera is activated. -->
+  <div id="cameraContainer" style="display: none; margin-top: 20px;">
+    <video id="webcamVideo" width="96" height="96" autoplay muted></video>
+  </div>
+
+  <div class="canvas-wrapper">
+    <div>
+      <h3>Input</h3>
+      <canvas id="inputCanvas" width="96" height="96"></canvas>
+    </div>
+    <div>
+      <h3>Prediction</h3>
+      <canvas id="overlayCanvas" width="96" height="96"></canvas>
+    </div>
+  </div>
+
+  <p id="status">Idle.</p>
+
+  <!-- Container for dataset and model statistics. Hidden until the model loads. -->
+  <div id="statsContainer" style="display: none; margin-top: 20px;">
+    <h3>Dataset &amp; Model Statistics</h3>
+    <ul id="statsList"></ul>
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 10px;">
+      <canvas id="lossChart" width="300" height="200"></canvas>
+      <canvas id="maeChart" width="300" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Analysis of the currently uploaded or captured photo. Hidden until a prediction is made. -->
+  <div id="photoMetrics" style="display: none; margin-top: 20px;">
+    <h3>Photo Analysis</h3>
+    <ul id="photoMetricsList"></ul>
+  </div>
+  <!-- Bump the version number to bust caches when the script changes -->
+  <script src="app.js?v=19"></script>
+</body>
+</html>
