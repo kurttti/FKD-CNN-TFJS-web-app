@@ -5,7 +5,21 @@ const ctxIn = inputCanvas.getContext("2d");
 const ctxOut = overlayCanvas.getContext("2d");
 const statusEl = document.getElementById("status");
 
-const MODEL_URL = "model/model.json?v=6";
+function resolveAssetUrl(assetPath) {
+  const { origin, pathname } = window.location;
+  if (pathname.endsWith("/")) {
+    return `${origin}${pathname}${assetPath}`;
+  }
+  const lastSlash = pathname.lastIndexOf("/");
+  const lastSegment = pathname.slice(lastSlash + 1);
+  const looksLikeFile = lastSegment.includes(".");
+  const basePath = looksLikeFile
+    ? pathname.slice(0, lastSlash + 1)
+    : `${pathname}/`;
+  return `${origin}${basePath}${assetPath}`;
+}
+
+const MODEL_URL = resolveAssetUrl("model/model.json?v=8");
 
 
 // ✅ Автоматическая загрузка модели при открытии страницы
@@ -17,7 +31,7 @@ window.addEventListener("load", async () => {
     statusEl.textContent = "Model loaded. Upload a face image.";
   } catch (err) {
     console.error(err);
-    statusEl.textContent = "Model loading failed. Check console.";
+    statusEl.textContent = `Model loading failed: ${err.message}`;
   }
 });
 
@@ -34,7 +48,7 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
     statusEl.textContent = "Model loaded successfully!";
   } catch (e) {
     console.error(e);
-    statusEl.textContent = "Error loading model.";
+    statusEl.textContent = `Error loading model: ${e.message}`;
   }
 });
 
