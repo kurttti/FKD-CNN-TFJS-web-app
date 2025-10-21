@@ -58,43 +58,28 @@
     });
   }
 
-  /**
-   * Lazily load the TensorFlow.js model. This helper ensures that only a single
-   * load operation is ever kicked off, and subsequent calls will either
-   * resolve immediately with the already-loaded model or await the same
-   * pending promise. If the load fails, the promise is cleared so a later
-   * call can retry the load.
-   *
-   * @returns {Promise<tf.LayersModel>} A promise that resolves with the loaded model.
-   */
   function fetchModel() {
-    // If we already have a loaded model instance, return it immediately.
     if (model) {
       return Promise.resolve(model);
     }
-    // If no load has been initiated yet, start one.
+
     if (!modelPromise) {
-      // Build the URL to the model JSON. The query param acts as a cache buster
-      // and can be bumped when the model is updated.
-      var modelUrl = resolveAssetUrl("model/model.json?v=16");
+      var modelUrl = resolveAssetUrl("model/model.json?v=17");
       modelPromise = tf
         .loadLayersModel(modelUrl, {
           requestInit: { cache: "no-cache" },
         })
         .then(function (loadedModel) {
-          // Warm up the model with a dummy inference so subsequent calls are
-          // faster. Also stash the loaded model for future callers.
           warmModel(loadedModel);
           model = loadedModel;
           return model;
         })
         .catch(function (error) {
-          // If loading fails, clear the promise so a future call can retry.
           modelPromise = null;
           throw error;
         });
     }
-    // Return the existing promise if a load is already in progress.
+
     return modelPromise;
   }
 
