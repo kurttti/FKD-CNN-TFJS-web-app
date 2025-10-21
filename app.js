@@ -22,10 +22,10 @@ function resolveAssetUrl(assetPath) {
   return `${origin}${basePath}${assetPath}`;
 }
 
-const MODEL_URL = resolveAssetUrl("model/model.json?v=10");
+const MODEL_URL = resolveAssetUrl("model/model.json?v=11");
 const WARM_UP_SHAPE = [1, 96, 96, 1];
 
-async function ensureModelLoaded() {
+async function loadModel() {
   if (model) {
     return model;
   }
@@ -36,13 +36,13 @@ async function ensureModelLoaded() {
         requestInit: { cache: "no-cache" },
       });
       warmUpModel(loadedModel);
+      model = loadedModel;
       return loadedModel;
     })();
   }
 
   try {
-    model = await modelLoadPromise;
-    return model;
+    return await modelLoadPromise;
   } catch (error) {
     modelLoadPromise = null;
     model = null;
@@ -70,7 +70,7 @@ function warmUpModel(loadedModel) {
 window.addEventListener("load", async () => {
   try {
     statusEl.textContent = "Loading model...";
-    await ensureModelLoaded();
+    await loadModel();
     statusEl.textContent = "Model loaded. Upload a face image.";
   } catch (err) {
     console.error(err);
@@ -86,7 +86,7 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
   }
   try {
     statusEl.textContent = "Loading model manually...";
-    await ensureModelLoaded();
+    await loadModel();
     statusEl.textContent = "Model loaded successfully!";
   } catch (e) {
     console.error(e);
@@ -98,18 +98,15 @@ document.getElementById("loadModelBtn").addEventListener("click", async () => {
 document.getElementById("imageInput").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
+  if (!model) {
+    statusEl.textContent = "Model not loaded yet.";
+    return;
+  }
   await drawAndPredict(file);
 });
 
 async function drawAndPredict(file) {
   try {
-    if (!model) {
-      statusEl.textContent = "Loading model...";
-    } else {
-      statusEl.textContent = "Processing image...";
-    }
-
-    const activeModel = await ensureModelLoaded();
     statusEl.textContent = "Processing image...";
 
     const img = await fileToImage(file);
@@ -125,7 +122,7 @@ async function drawAndPredict(file) {
     }
 
     const t = tf.tensor(gray, [1, 96, 96, 1]);
-    const y = activeModel.predict(t);
+    const y = model.predict(t);
     const coords = (await y.array())[0];
     y.dispose();
     t.dispose();
@@ -133,9 +130,7 @@ async function drawAndPredict(file) {
     ctxOut.clearRect(0, 0, 96, 96);
     ctxOut.drawImage(inputCanvas, 0, 0);
     ctxOut.strokeStyle = "#38bdf8";
-    for (let k = 0; k < 30; k += 2) {
-      drawCross(ctxOut, coords[k], coords[k + 1]);
-    }
+    for (let k = 0; k < 30; k += 2) drawCross(ctxOut, coords[k], coords[k + 1]);
 
     statusEl.textContent = "Prediction complete!";
   } catch (error) {
