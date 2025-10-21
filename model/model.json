@@ -30,19 +30,7 @@
                 96,
                 1
               ],
-              "batch_shape": [
-                null,
-                96,
-                96,
-                1
-              ],
               "batchInputShape": [
-                null,
-                96,
-                96,
-                1
-              ],
-              "batchShape": [
                 null,
                 96,
                 96,

@@ -26,13 +26,20 @@
     const basePath = looksLikeFile ? pathname.slice(0, lastSlash + 1) : `${pathname}/`;
     return `${origin}${basePath}${assetPath}`;
   }
-  
+
   async function fetchModel() {
     if (model) {
       return model;
     }
     if (!modelPromise) {
       const modelUrl = resolveAssetUrl("model/model.json?v=14");
+      modelPromise = (async () => {
+        const loadedModel = await tf.loadLayersModel(modelUrl, {
+          requestInit: { cache: "no-cache" },
+        });
+
+    if (!modelPromise) {
+      const modelUrl = resolveAssetUrl("model/model.json?v=15");
       modelPromise = (async () => {
         const loadedModel = await tf.loadLayersModel(modelUrl, {
           requestInit: { cache: "no-cache" },
@@ -58,7 +65,7 @@
 
     return modelPromise;
   }
-  
+
   window.addEventListener("load", async () => {
     if (model) {
       return;
@@ -106,6 +113,7 @@
       statusEl.textContent = "Model loading failed. Check console.";
     }
   });
+
   async function drawAndPredict(file) {
     try {
       statusEl.textContent = "Processing image...";
