@@ -5,7 +5,7 @@ const ctxIn = inputCanvas.getContext("2d");
 const ctxOut = overlayCanvas.getContext("2d");
 const statusEl = document.getElementById("status");
 
-const MODEL_URL = "model/model.json?v=2";
+const MODEL_URL = "model/model.json?v=3";
 
 // ✅ Автоматическая загрузка модели при открытии страницы
 window.addEventListener("load", async () => {
