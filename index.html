@@ -15,12 +15,9 @@
 
   <div class="controls">
     <button id="loadModelBtn">Load Model</button>
-    <!-- File picker for uploading an existing image -->
     <input type="file" id="imageInput" accept="image/*" />
-    <!-- Controls for using the webcam -->
     <button id="startCameraBtn">Use Camera</button>
     <button id="captureBtn" disabled>Capture Photo</button>
-    <!-- Button to stop and hide the webcam feed. Hidden until the camera is started. -->
     <button id="stopCameraBtn" style="display: none;">Stop Camera</button>
   </div>
 
@@ -56,8 +53,10 @@
   <div id="photoMetrics" style="display: none; margin-top: 20px;">
     <h3>Photo Analysis</h3>
     <ul id="photoMetricsList"></ul>
+    <p id="photoInterpretation" style="margin-top: 10px; color: #94a3b8; max-width: 400px; margin-left: auto; margin-right: auto; text-align: left;"></p>
   </div>
+
   <!-- Bump the version number to bust caches when the script changes -->
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>
